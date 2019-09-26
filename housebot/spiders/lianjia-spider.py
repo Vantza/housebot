@@ -3,7 +3,7 @@ import scrapy
 import time
 
 from scrapy.http.request import Request
-
+from housebot.items import HousebotItem
 
 class lianjiaSpider(scrapy.Spider):
     name = 'lianjia-spider'
@@ -14,7 +14,7 @@ class lianjiaSpider(scrapy.Spider):
     RESOURCE = 'lianjia'
     SLASH = '/'
     PAGE_INDEX = 2
-    PAGE_MAX = 10
+    PAGE_MAX = 5
     HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -27,35 +27,46 @@ class lianjiaSpider(scrapy.Spider):
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'}
 
-    HOUSE_INFO_PATH = '//ul[@class="sellListContent"]/li/div[@class="info clear"]'
-    TITLE_PATH = './div[@class="title"]/a/text()'
-    ADDRESS_1ST_PATH = './div[@class="address"]/div/a/text()'
-    ADDRESS_2ND_PATH = './div[@class="address"]/div/text()'
-    FLOOR_1ST_PATH = './div[@class="flood"]/div/text()'
-    FLOOR_2ND_PATH = './div[@class="flood"]/div/a/text()'
-    FOLLOW_INFO_PATH = './div[@class="followInfo"]/text()'
-    PRICE_INFO_1ST_PATH = './div[@class="priceInfo"]/div/span/text()'
-    PRICE_INFO_2ND_PATH = './div[@class="priceInfo"]/div/text()'
-    UNIT_PRICE_PATH = './div[@class="priceInfo"]/div[@class="unitPrice"]/span/text()'
+    HOUSE_INFO_PATH = '//ul[@class="sellListContent"]/li[@class="clear LOGVIEWDATA LOGCLICKDATA"]'
+    TITLE_PATH = './div[@class="info clear"]/div[@class="title"]/a/text()'
+    ADDRESS_1ST_PATH = './div[@class="info clear"]/div[@class="address"]/div/a/text()'
+    ADDRESS_2ND_PATH = './div[@class="info clear"]/div[@class="address"]/div/text()'
+    FLOOR_1ST_PATH = './div[@class="info clear"]/div[@class="flood"]/div/text()'
+    FLOOR_2ND_PATH = './div[@class="info clear"]/div[@class="flood"]/div/a/text()'
+    FOLLOW_INFO_PATH = './div[@class="info clear"]/div[@class="followInfo"]/text()'
+    PRICE_INFO_1ST_PATH = './div[@class="info clear"]/div[@class="priceInfo"]/div/span/text()'
+    PRICE_INFO_2ND_PATH = './div[@class="info clear"]/div[@class="priceInfo"]/div/text()'
+    UNIT_PRICE_PATH = './div[@class="info clear"]/div[@class="priceInfo"]/div[@class="unitPrice"]/span/text()'
+    DETAIL_URL_PATH = './a/@href'
 
+    # here do not return item otherwise it will create a new item which not contains detail info
     def parse(self, response):
         for houseInfo in response.xpath(self.HOUSE_INFO_PATH):
-            yield {
-                'resource': self.RESOURCE,
-                'fetchDate': time.strftime('%Y-%m-%d %H:%M:%S'),
-                'title': self.title_handle(houseInfo),
-                'address': self.address_handle(houseInfo),
-                'floor': self.floor_handle(houseInfo),
-                'followInfo': self.follow_info_handle(houseInfo),
-                'tag': self.tag_handle(houseInfo),
-                'priceInfo': self.price_info_handle(houseInfo),
-                'unitPrice': self.unit_price_handle(houseInfo)
-            }
+            house_item = HousebotItem()
+            house_item['resource'] = self.RESOURCE
+            house_item['fetchDate'] = time.strftime('%Y-%m-%d %H:%M:%S')
+            house_item['title'] = self.title_handle(houseInfo)
+            house_item['address'] = self.address_handle(houseInfo)
+            house_item['floor'] = self.floor_handle(houseInfo)
+            house_item['followInfo'] = self.follow_info_handle(houseInfo)
+            house_item['tag'] = self.tag_handle(houseInfo)
+            house_item['priceInfo'] = self.price_info_handle(houseInfo)
+            house_item['unitPrice'] = self.unit_price_handle(houseInfo)
+            detail_page_url = self.detail_url_handle(houseInfo)
+            yield Request(detail_page_url, meta={'items': house_item}, callback=self.parse_detail)
         next_page_url = self.base_url + 'pg' + str(self.PAGE_INDEX)
         if self.PAGE_INDEX < self.PAGE_MAX:
             self.PAGE_INDEX += 1
             yield Request(next_page_url,
                           dont_filter=True)
+
+    def parse_detail(self, response):
+        house_item = response.meta['items']
+        # todo need to complete whole info
+        house_item['room'] = response.xpath('//div[@class="room"]/div[@class="mainInfo"]/text()').extract_first()
+        house_item['room'] = response.xpath('//div[@class="type"]/div[@class="mainInfo"]/text()').extract_first()
+        house_item['room'] = response.xpath('//div[@class="area"]/div[@class="mainInfo"]/text()').extract_first()
+        yield house_item
 
     def start_requests(self):
         for url in self.start_urls:
@@ -91,3 +102,6 @@ class lianjiaSpider(scrapy.Spider):
 
     def unit_price_handle(self, houseInfo):
         return houseInfo.xpath(self.UNIT_PRICE_PATH).extract_first()
+
+    def detail_url_handle(self, houseInfo):
+        return houseInfo.xpath(self.DETAIL_URL_PATH).extract_first()
