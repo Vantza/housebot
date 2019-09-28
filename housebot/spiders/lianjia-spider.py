@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 import scrapy
 import time
+import logging
 
 from scrapy.http.request import Request
 from housebot.items import HousebotItem
 
+
 class lianjiaSpider(scrapy.Spider):
+    logger = logging.getLogger()
     name = 'lianjia-spider'
     base_url = 'https://sh.lianjia.com/ershoufang/'
     start_urls = [
@@ -14,7 +17,7 @@ class lianjiaSpider(scrapy.Spider):
     RESOURCE = 'lianjia'
     SLASH = '/'
     PAGE_INDEX = 2
-    PAGE_MAX = 5
+    PAGE_MAX = 2
     HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -38,6 +41,9 @@ class lianjiaSpider(scrapy.Spider):
     PRICE_INFO_2ND_PATH = './div[@class="info clear"]/div[@class="priceInfo"]/div/text()'
     UNIT_PRICE_PATH = './div[@class="info clear"]/div[@class="priceInfo"]/div[@class="unitPrice"]/span/text()'
     DETAIL_URL_PATH = './a/@href'
+    BASE_INFO_LIST_PATH = '//div[@class="m-content"]/div[@class="box-l"]/div[@class="newwrap baseinform"]/div/div[@class="introContent"]/div[@class="base"]/div[@class="content"]/ul/li'
+    TRANSACTION_INFO_LIST_PATH = '//div[@class="m-content"]/div[@class="box-l"]/div[@class="newwrap baseinform"]/div/div[@class="introContent"]/div[@class="transaction"]/div[@class="content"]/ul/li'
+    LAYOUT_INFO_PATH = '//div[@class="m-content"]/div[@class="box-l"]/div/div[@class="layout-wrapper"]/div[@class="layout"]/div[@class="content"]'
 
     # here do not return item otherwise it will create a new item which not contains detail info
     def parse(self, response):
@@ -64,8 +70,11 @@ class lianjiaSpider(scrapy.Spider):
         house_item = response.meta['items']
         # todo need to complete whole info
         house_item['room'] = response.xpath('//div[@class="room"]/div[@class="mainInfo"]/text()').extract_first()
-        house_item['room'] = response.xpath('//div[@class="type"]/div[@class="mainInfo"]/text()').extract_first()
-        house_item['room'] = response.xpath('//div[@class="area"]/div[@class="mainInfo"]/text()').extract_first()
+        house_item['type'] = response.xpath('//div[@class="type"]/div[@class="mainInfo"]/text()').extract_first()
+        house_item['area'] = response.xpath('//div[@class="area"]/div[@class="mainInfo"]/text()').extract_first()
+        house_item['baseInfo'] = self.base_info_handle(response.xpath(self.BASE_INFO_LIST_PATH))
+        house_item['transactionInfo'] = self.transaction_info_handle(response.xpath(self.TRANSACTION_INFO_LIST_PATH))
+        house_item['layoutInfo'] = self.layout_info_handle(response.xpath(self.LAYOUT_INFO_PATH))
         yield house_item
 
     def start_requests(self):
@@ -74,6 +83,38 @@ class lianjiaSpider(scrapy.Spider):
                           headers=self.HEADERS,
                           dont_filter=True)
 
+    # 布局信息处理
+    def layout_info_handle(self, layoutInfo):
+        layout_info_dict = {'imgUrl': layoutInfo.xpath('./div[@class="imgdiv"]/img/@src').extract_first()}
+        detail_info_list = layoutInfo.xpath('./div[@class="des"]/div[@class="info"]/div[@class="list"]/div[@id="infoList"]/div[@class="row"]')
+        # self.logger.debug('detail_info_list is %s', detail_info_list)
+        for idx, info in enumerate(detail_info_list):
+            key = 'layoutInfo[{}]'.format(idx)
+            detail_list = []
+            for detail in info.xpath('./div[@class="col"]'):
+                detail_list.append(detail.xpath('./text()').extract_first())
+            layout_info_dict[key] = detail_list
+        return layout_info_dict
+
+    # 交易信息处理
+    def transaction_info_handle(self, transactionInfoList):
+        transaction_info_dict = {}
+        for transactionInfo in transactionInfoList:
+            key = transactionInfo.xpath('./span[@class="label"]/text()').extract_first()
+            value = transactionInfo.xpath('./span/text()').extract()[1]
+            transaction_info_dict[key] = str(value).strip().replace('/n', '')
+        return transaction_info_dict
+
+    # 基本信息处理
+    def base_info_handle(self, baseInfoList):
+        base_info_dict = {}
+        for baseInfo in baseInfoList:
+            key = baseInfo.xpath('./span/text()').extract_first()
+            value = baseInfo.xpath('./text()').extract_first()
+            base_info_dict[key] = value
+        return base_info_dict
+
+    # 标签信息处理
     def tag_handle(self, houseInfo):
         tag_list = ''
         for tag in houseInfo.xpath('./div[@class="tag"]/span'):
@@ -82,26 +123,33 @@ class lianjiaSpider(scrapy.Spider):
                 tag_list = tag_list + temp + self.SLASH
         return tag_list
 
+    # 标题信息处理
     def title_handle(self, houseInfo):
         return houseInfo.xpath(self.TITLE_PATH).extract_first()
 
+    # 地址信息处理
     def address_handle(self, houseInfo):
         return houseInfo.xpath(self.ADDRESS_1ST_PATH).extract_first() \
                + houseInfo.xpath(self.ADDRESS_2ND_PATH).extract_first()
 
+    # 楼层信息处理
     def floor_handle(self, houseInfo):
         return houseInfo.xpath(self.FLOOR_1ST_PATH).extract_first() \
                + houseInfo.xpath(self.FLOOR_2ND_PATH).extract_first()
 
+    # 关注信息处理
     def follow_info_handle(self, houseInfo):
         return houseInfo.xpath(self.FOLLOW_INFO_PATH).extract_first()
 
+    # 价格信息处理
     def price_info_handle(self, houseInfo):
         return houseInfo.xpath(self.PRICE_INFO_1ST_PATH).extract_first() \
                + houseInfo.xpath(self.PRICE_INFO_2ND_PATH).extract_first()
 
+    # 单价信息处理
     def unit_price_handle(self, houseInfo):
         return houseInfo.xpath(self.UNIT_PRICE_PATH).extract_first()
 
+    # 详细页面url处理
     def detail_url_handle(self, houseInfo):
         return houseInfo.xpath(self.DETAIL_URL_PATH).extract_first()

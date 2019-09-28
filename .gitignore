@@ -1,6 +1,13 @@
-.idea/*
+*/.idea/*
 .gitignore
-.idea
+./.idea/
 *.pyc
 .idea/workspace.xml
 .DS_STORE
+./mongodb/
+将删除 .idea/vcs.xml
+将删除 mongodb/
+
+.idea/
+
+mongodb/

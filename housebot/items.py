@@ -24,4 +24,12 @@ class HousebotItem(scrapy.Item):
     room = scrapy.Field()
     type = scrapy.Field()
     area = scrapy.Field()
+
+    ## 下列信息为详细页信息
+    # 基础信息
+    baseInfo = scrapy.Field()
+    # 交易信息
+    transactionInfo = scrapy.Field()
+    # 布局信息
+    layoutInfo = scrapy.Field()
     pass
