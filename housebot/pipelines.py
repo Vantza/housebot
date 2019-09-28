@@ -9,14 +9,18 @@ import json
 import pymongo
 
 
-class HousebotPipeline(object):
-    # def __init__(self):
-    #     self.file = codecs.open('test.json', 'wb', encoding='utf-8')
-    #
-    # def process_item(self, item, spider):
-    #     line = json.dumps(dict(item)) + "\n"
-    #     self.file.write(line)
-    #     return item
+class HousebotLocalFilePipeline(object):
+    # save data to json file
+    def __init__(self):
+        self.file = codecs.open('test.json', 'wb', encoding='utf-8')
+
+    def process_item(self, item, spider):
+        line = json.dumps(dict(item)) + "\n"
+        self.file.write(line)
+        return item
+
+
+class HousebotMongoPipeline(object):
     def __init__(self, mongo_uri, mongo_db, mongo_post):
         self.mongo_uri = mongo_uri
         self.mongo_db = mongo_db

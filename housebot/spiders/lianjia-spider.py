@@ -17,7 +17,7 @@ class lianjiaSpider(scrapy.Spider):
     RESOURCE = 'lianjia'
     SLASH = '/'
     PAGE_INDEX = 2
-    PAGE_MAX = 2
+    PAGE_MAX = 99
     HEADERS = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
@@ -32,6 +32,7 @@ class lianjiaSpider(scrapy.Spider):
 
     HOUSE_INFO_PATH = '//ul[@class="sellListContent"]/li[@class="clear LOGVIEWDATA LOGCLICKDATA"]'
     TITLE_PATH = './div[@class="info clear"]/div[@class="title"]/a/text()'
+    TAG_PATH = './div[@class="info clear"]/div[@class="tag"]/span'
     ADDRESS_1ST_PATH = './div[@class="info clear"]/div[@class="address"]/div/a/text()'
     ADDRESS_2ND_PATH = './div[@class="info clear"]/div[@class="address"]/div/text()'
     FLOOR_1ST_PATH = './div[@class="info clear"]/div[@class="flood"]/div/text()'
@@ -116,11 +117,12 @@ class lianjiaSpider(scrapy.Spider):
 
     # 标签信息处理
     def tag_handle(self, houseInfo):
-        tag_list = ''
-        for tag in houseInfo.xpath('./div[@class="tag"]/span'):
+        tag_list = []
+        for tag in houseInfo.xpath(self.TAG_PATH):
+            # self.logger.debug('tag is %s', tag)
             temp = tag.xpath('./text()').extract_first()
             if temp is not None:
-                tag_list = tag_list + temp + self.SLASH
+                tag_list.append(temp)
         return tag_list
 
     # 标题信息处理

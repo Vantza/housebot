@@ -65,7 +65,7 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   'housebot.pipelines.HousebotPipeline': 300,
+   'housebot.pipelines.HousebotMongoPipeline': 300,
 }
 
 MONGO_URI = 'mongodb://root:root@localhost:27017'
