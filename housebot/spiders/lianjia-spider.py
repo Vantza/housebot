@@ -103,7 +103,7 @@ class lianjiaSpider(scrapy.Spider):
         for transactionInfo in transactionInfoList:
             key = transactionInfo.xpath('./span[@class="label"]/text()').extract_first()
             value = transactionInfo.xpath('./span/text()').extract()[1]
-            transaction_info_dict[key] = str(value).strip().replace('/n', '')
+            transaction_info_dict[key] = value.strip().replace('/n','')
         return transaction_info_dict
 
     # 基本信息处理
