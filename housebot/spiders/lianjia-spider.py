@@ -132,7 +132,7 @@ class lianjiaSpider(scrapy.Spider):
     # 地址信息处理
     def address_handle(self, houseInfo):
         return houseInfo.xpath(self.ADDRESS_1ST_PATH).extract_first() \
-               + houseInfo.xpath(self.ADDRESS_2ND_PATH).extract_first()
+               # todo 页面有更新2019/11/12 + houseInfo.xpath(self.ADDRESS_2ND_PATH).extract_first()
 
     # 楼层信息处理
     def floor_handle(self, houseInfo):
