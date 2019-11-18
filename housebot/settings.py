@@ -68,7 +68,7 @@ ITEM_PIPELINES = {
    'housebot.pipelines.HousebotMongoPipeline': 300,
 }
 
-MONGO_URI = 'mongodb://root:root@localhost:27017'
+MONGO_URI = 'mongodb://localhost:27017'
 MONGO_DB = 'house_db'
 MONGO_POST = 'house_info'
 
